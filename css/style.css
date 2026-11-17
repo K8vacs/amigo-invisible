@@ -1,0 +1,231 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Ubuntu", system-ui, "Segoe UI", Arial, sans-serif;
+  background-color: #0b1626;
+  background-image: radial-gradient(#15294a 1px, transparent 1px);
+  background-size: 8px 8px;
+  color: #1c2533;
+  min-height: 100vh;
+}
+
+#wrap {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 12px;
+}
+
+/* ---------- Habitación ---------- */
+
+#stage {
+  position: relative;
+  width: 100%;
+  background: #1d3a5c;
+  border: 4px solid #0a1220;
+  border-radius: 6px;
+  box-shadow: 0 0 0 3px #4d7cb3;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+#room, .sprite {
+  display: block;
+  image-rendering: pixelated;
+}
+
+#room { width: 100%; height: auto; }
+
+.sprite { position: absolute; height: auto; }
+
+/* ---------- Ventana de diálogo ---------- */
+
+.window {
+  background: #e9e6dc;
+  border: 3px solid #0a1220;
+  border-radius: 6px;
+  box-shadow: 0 0 0 3px #4d7cb3;
+}
+
+.window-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2b4f7e;
+  color: #fff;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-bottom: 3px solid #0a1220;
+}
+
+.window-title .x {
+  background: #d9534f;
+  border: 2px solid #0a1220;
+  border-radius: 3px;
+  width: 22px;
+  height: 22px;
+  line-height: 18px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.window-body { padding: 18px 16px; }
+
+.screen { display: none; text-align: center; }
+.screen.active { display: block; }
+
+/* la fuente pixelada solo en títulos; preguntas y respuestas en fuente legible */
+h1, .window-title { font-family: "Pixelify Sans", "Courier New", monospace; }
+
+h1 { font-size: 1.6rem; margin: 0 0 12px; }
+h2 { font-size: 1.3rem; font-weight: 700; margin: 8px 0 16px; line-height: 1.35; }
+p { font-size: 1.05rem; line-height: 1.5; margin: 0 0 14px; }
+
+#progress { opacity: 0.7; font-size: 1rem; margin: 0; }
+#feedback { min-height: 1.5em; font-weight: 700; margin: 12px 0 0; }
+
+/* ---------- Botones ---------- */
+
+button {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  padding: 12px;
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: #1c2533;
+  background: linear-gradient(#ffffff, #d8d4c6);
+  border: 2px solid #0a1220;
+  border-radius: 4px;
+  box-shadow: 0 3px 0 #0a1220;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) { background: linear-gradient(#ffffff, #eceae0); }
+button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #0a1220; }
+button:disabled { cursor: default; }
+
+#btn-start {
+  background: linear-gradient(#8fe06a, #5bb83b);
+  font-weight: 700;
+}
+
+button.correct { background: linear-gradient(#8fe06a, #5bb83b); }
+button.wrong { background: linear-gradient(#f28b82, #d9534f); }
+
+/* ---------- Código final ---------- */
+
+#gift-code {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 6px;
+  background: #0a1220;
+  color: #f5c542;
+  padding: 16px;
+  border-radius: 4px;
+  border: 3px solid #4d7cb3;
+}
+
+/* ---------- Animaciones ----------
+   --px / --py = 1 píxel del sprite (los pone room.js), así todo se mueve
+   de píxel en píxel y con pasos, como en un juego retro. */
+
+/* balanceo de reposo */
+@keyframes bob {
+  0%, 49% { transform: translateY(0); }
+  50%, 100% { transform: translateY(calc(var(--py) * -1)); }
+}
+.bob { animation: bob 1.6s step-end infinite; }
+
+/* el amigo cae desde arriba al empezar su pregunta y luego se balancea */
+@keyframes enter {
+  0% { transform: translateY(calc(var(--py) * -14)); opacity: 0; }
+  1% { opacity: 1; }
+  45% { transform: translateY(0); }
+  60% { transform: translateY(calc(var(--py) * -3)); }
+  75%, 100% { transform: translateY(0); }
+}
+.friend-enter {
+  animation: enter 0.6s steps(6) both, bob 1.4s step-end 0.6s infinite;
+}
+
+/* acierto: saltitos */
+@keyframes hop {
+  0%, 100% { transform: translateY(0); }
+  20% { transform: translateY(calc(var(--py) * -5)); }
+  40% { transform: translateY(0); }
+  60% { transform: translateY(calc(var(--py) * -3)); }
+  80% { transform: translateY(0); }
+}
+.hop { animation: hop 0.7s steps(3) 1; }
+
+/* acierto: Anonymous asiente */
+@keyframes nod {
+  0%, 100% { transform: translateY(0); }
+  30% { transform: translateY(calc(var(--py) * 2)); }
+  60% { transform: translateY(0); }
+}
+.nod { animation: nod 0.5s step-end 1; }
+
+/* fallo: niega con la cabeza */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(calc(var(--px) * -2)); }
+  30% { transform: translateX(calc(var(--px) * 2)); }
+  45% { transform: translateX(calc(var(--px) * -2)); }
+  60% { transform: translateX(calc(var(--px) * 2)); }
+  75% { transform: translateX(calc(var(--px) * -1)); }
+}
+.shake { animation: shake 0.6s step-end 1; }
+
+/* cofre abierto: salta y brilla */
+@keyframes glow {
+  from { filter: drop-shadow(0 0 2px #ffe27a); }
+  to { filter: drop-shadow(0 0 10px #ffe27a); }
+}
+.chest-open {
+  animation: hop 0.7s steps(3) 1, glow 0.8s ease-in-out infinite alternate;
+}
+
+/* chispas (cuadraditos de 2 píxeles del lienzo) */
+.spark, .confetti {
+  position: absolute;
+  width: 1.25%;
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+.spark { animation: spark 0.7s steps(5) forwards; }
+@keyframes spark {
+  from { transform: translate(0, 0); opacity: 1; }
+  to { transform: translate(calc(var(--dx) * 100%), calc(var(--dy) * 100%)); opacity: 0; }
+}
+
+/* confeti al ganar */
+.confetti { top: -3%; animation: fall 1.8s steps(16) forwards; }
+@keyframes fall {
+  from { transform: translate(0, 0); opacity: 1; }
+  to { transform: translate(calc(var(--sx) * 100%), 5600%); opacity: 1; }
+}
+
+/* destello rojo al fallar */
+#stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #d9534f;
+  opacity: 0;
+  pointer-events: none;
+}
+#stage.flash-wrong::after { animation: redflash 0.5s step-end 1; }
+@keyframes redflash {
+  0% { opacity: 0.35; }
+  25% { opacity: 0; }
+  50% { opacity: 0.35; }
+  75%, 100% { opacity: 0; }
+}
+
+/* si el sistema pide menos movimiento, sin animaciones */
+@media (prefers-reduced-motion: reduce) {
+  .sprite, .spark, .confetti, #stage::after { animation: none !important; }
+}
