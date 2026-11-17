@@ -1,7 +1,8 @@
 const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let current = 0;
-let locked = false;
+let locked = false;   // true mientras corre una animación: ignora los clics
 
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
@@ -11,7 +12,6 @@ function showScreen(id) {
 function renderQuestion() {
   const item = QUESTIONS[current];
   locked = false;
-  showFriend(item.who);
   $("progress").textContent = `Pregunta ${current + 1} de ${QUESTIONS.length}`;
   $("question-text").textContent = item.q;
   $("feedback").textContent = "";
@@ -26,39 +26,63 @@ function renderQuestion() {
   });
 }
 
-function answer(index, btn) {
+// Empezar: la ventana crece, entra el primer amigo y vuelve a su tamaño
+async function startGame() {
+  if (locked) return;
+  locked = true;
+  current = 0;
+  showFriend(QUESTIONS[0].who);
+  await cameraTo("friend");
+  await sleep(700);
+  await cameraOut();
+  renderQuestion();
+  showScreen("screen-question");
+}
+
+// Responder: plano cerrado con la reacción y, si acierta, entra el siguiente amigo
+async function answer(index, btn) {
   if (locked) return;
   locked = true;
 
   const correct = index === QUESTIONS[current].answer;
   btn.classList.add(correct ? "correct" : "wrong");
   $("feedback").textContent = correct ? "¡Correcto!" : "Incorrecto…";
-  correct ? reactCorrect() : reactWrong();
 
-  setTimeout(() => {
-    if (!correct) return lose();
-    current++;
-    current < QUESTIONS.length ? renderQuestion() : win();
-  }, 900);
+  await cameraTo("friend");
+  correct ? reactCorrect() : reactWrong();
+  await sleep(1000);
+
+  if (!correct) {
+    await cameraTo("screen");   // la cámara se va a la pantalla, que se pone en rojo
+    defeat();
+    await sleep(1200);
+    await cameraOut();
+    return lose();
+  }
+
+  if (current === QUESTIONS.length - 1) return win();
+
+  current++;
+  showFriend(QUESTIONS[current].who);
+  await sleep(900);
+  await cameraOut();
+  renderQuestion();
 }
 
-function win() {
+async function win() {
   $("gift-code").textContent = CONFIG.giftCode;
+  await cameraTo("chest");
   celebrate();
-  // pequeña pausa para que se vea abrirse el cofre antes de enseñar el código
-  setTimeout(() => showScreen("screen-win"), 1600);
+  await sleep(1800);
+  await cameraOut();
+  showScreen("screen-win");
 }
 
 function lose() {
-  defeat();
   $("lose-text").textContent = CONFIG.loseText;
   showScreen("screen-lose");
 }
 
 $("intro-title").textContent = CONFIG.introTitle;
 $("intro-text").textContent = CONFIG.introText;
-$("btn-start").addEventListener("click", () => {
-  current = 0;
-  renderQuestion();
-  showScreen("screen-question");
-});
+$("btn-start").addEventListener("click", startGame);

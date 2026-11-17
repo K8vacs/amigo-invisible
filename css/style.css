@@ -18,6 +18,14 @@ body {
 
 /* ---------- Habitación ---------- */
 
+/* El "hueco" reserva el sitio de la ventana mientras esta crece por encima
+   del resto (modo .focus), así el diseño no salta al hacer zoom. */
+#stage-slot {
+  position: relative;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
 #stage {
   position: relative;
   width: 100%;
@@ -26,7 +34,24 @@ body {
   border-radius: 6px;
   box-shadow: 0 0 0 3px #4d7cb3;
   overflow: hidden;
-  margin-bottom: 16px;
+  z-index: 1;
+  transition: height 0.55s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+#stage-slot.focus #stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 20;
+}
+
+/* la cámara: todo lo de dentro (suelo, sprites, chispas) se mueve y escala junto */
+#cam {
+  position: relative;
+  width: 100%;
+  transform-origin: 0 0;
+  transform: translate(0, 0) scale(1);
+  transition: transform 0.55s cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 #room, .sprite {
@@ -208,6 +233,47 @@ button.wrong { background: linear-gradient(#f28b82, #d9534f); }
   to { transform: translate(calc(var(--sx) * 100%), 5600%); opacity: 1; }
 }
 
+/* bocadillo del amigo (todo en em: el tamaño lo fija room.js) */
+.bubble {
+  position: absolute;
+  z-index: 3;
+  padding: 0.3em 0.6em;
+  background: #fff;
+  color: #1c2533;
+  border: 0.16em solid #0a1220;
+  border-radius: 0.45em;
+  font-family: "Pixelify Sans", "Courier New", monospace;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  transform-origin: 50% 100%;
+  animation: pop 0.35s steps(5) both;
+}
+.bubble.yes { color: #2a8a22; }
+.bubble.no { color: #c0392b; }
+
+/* la colita del bocadillo */
+.bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -0.42em;
+  width: 0.55em;
+  height: 0.55em;
+  background: #fff;
+  border-right: 0.16em solid #0a1220;
+  border-bottom: 0.16em solid #0a1220;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+@keyframes pop {
+  from { transform: translate(-50%, -100%) scale(0); }
+  60% { transform: translate(-50%, -100%) scale(1.18); }
+  to { transform: translate(-50%, -100%) scale(1); }
+}
+
 /* destello rojo al fallar */
 #stage::after {
   content: "";
@@ -227,5 +293,5 @@ button.wrong { background: linear-gradient(#f28b82, #d9534f); }
 
 /* si el sistema pide menos movimiento, sin animaciones */
 @media (prefers-reduced-motion: reduce) {
-  .sprite, .spark, .confetti, #stage::after { animation: none !important; }
+  .sprite, .spark, .confetti, .bubble, #stage::after { animation: none !important; }
 }

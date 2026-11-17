@@ -181,7 +181,9 @@ Object.assign(SPRITES, {
   ], { h: "#b88a5a", s: "#f0c8a0", n: "#d9a273", N: "#c4895c", e: "#5a3a1e", m: "#b5454e", t: "#e07b39", p: "#2f3f6b" })
 });
 
-const stage = document.getElementById("stage");
+const slot = document.getElementById("stage-slot");
+const frame = document.getElementById("stage");   // el marco de la ventana
+const stage = document.getElementById("cam");     // la "cámara": aquí van los sprites
 const room = document.getElementById("room");
 const ctx = room.getContext("2d");
 
@@ -349,8 +351,32 @@ putSprite("desk", "desk", d.x, deskBottom);
 
 // ---------- Amigo de la pregunta actual ----------
 let friendEl = null;
+let bubbleEl = null;
+
+function hideBubble() {
+  if (bubbleEl) {
+    bubbleEl.remove();
+    bubbleEl = null;
+  }
+}
+
+// bocadillo sobre la cabeza del amigo; kind = "yes" (verde) o "no" (rojo)
+function say(text, kind) {
+  hideBubble();
+  if (!friendEl) return;
+  const b = document.createElement("div");
+  b.className = "bubble " + kind;
+  b.textContent = text;
+  // el tamaño de letra sigue el tamaño de la habitación (y crece con el zoom de la cámara)
+  b.style.fontSize = (stage.offsetWidth / W * 6) + "px";
+  b.style.left = (parseFloat(friendEl.style.left) + parseFloat(friendEl.style.width) / 2) + "%";
+  b.style.top = (parseFloat(friendEl.style.top) - 1.5) + "%";
+  stage.appendChild(b);
+  bubbleEl = b;
+}
 
 function hideFriend() {
+  hideBubble();
   if (friendEl) {
     friendEl.remove();
     friendEl = null;
@@ -456,14 +482,15 @@ function confetti() {
 
 function flashStage() {
   if (REDUCED) return;
-  stage.classList.remove("flash-wrong");
-  void stage.offsetWidth;
-  stage.classList.add("flash-wrong");
-  setTimeout(() => stage.classList.remove("flash-wrong"), 600);
+  frame.classList.remove("flash-wrong");
+  void frame.offsetWidth;
+  frame.classList.add("flash-wrong");
+  setTimeout(() => frame.classList.remove("flash-wrong"), 600);
 }
 
 // respuesta correcta: el amigo salta con chispas y Anonymous asiente
 function reactCorrect() {
+  say("¡Siii!", "yes");
   playOnce(friendEl, "hop");
   playOnce(avatarEl, "nod");
   const t = tile(1, 4);
@@ -472,6 +499,7 @@ function reactCorrect() {
 
 // respuesta incorrecta: el amigo niega con la cabeza y la sala parpadea en rojo
 function reactWrong() {
+  say("¡Noo!", "no");
   playOnce(friendEl, "shake");
   playOnce(avatarEl, "shake");
   flashStage();
@@ -495,4 +523,66 @@ function defeat() {
   screenMode = "denied";
   drawScreen();
   flashStage();
+}
+
+// ---------- Cámara: la ventana crece, enfoca la acción y vuelve a su sitio ----------
+
+const CAM_MS = 550;   // duración del zoom (igual que en el CSS)
+// x, y = punto a enfocar (en píxeles del lienzo de 160x104), s = zoom mínimo
+const CAM = {
+  friend: { x: 64, y: 62, s: 2.6 },    // el amigo y Anonymous
+  chest:  { x: 96, y: 56, s: 3.0 },    // el cofre
+  screen: { x: 105, y: 38, s: 3.0 }    // la pantalla de la pared
+};
+let camFocused = false;
+let camNormalH = 0;
+
+const camWait = () => new Promise((r) => setTimeout(r, CAM_MS));
+
+// agranda la ventana (si no lo estaba) y mueve la cámara hasta el punto pedido
+function cameraTo(name) {
+  if (REDUCED) return Promise.resolve();
+  const t = CAM[name];
+  const border = frame.offsetHeight - frame.clientHeight;
+  const cw = stage.offsetWidth, ch = stage.offsetHeight;   // tamaño normal de la habitación
+  const fw = frame.clientWidth;
+  const focusH = Math.round(Math.max(frame.offsetHeight, Math.min(window.innerHeight * 0.72, fw * 1.25 + border)));
+  const fh = focusH - border;
+
+  if (!camFocused) {
+    camFocused = true;
+    camNormalH = frame.offsetHeight;
+    slot.style.height = camNormalH + "px";      // reserva el hueco
+    frame.style.height = camNormalH + "px";     // punto de partida de la transición
+    slot.classList.add("focus");
+    void frame.offsetWidth;
+
+    // si la ventana no se ve entera en pantalla, desplaza la página hasta ella
+    const r = slot.getBoundingClientRect();
+    const over = r.top + focusH + 8 - window.innerHeight;
+    const delta = r.top < 0 ? r.top - 8 : Math.min(Math.max(over, 0), r.top - 8);
+    if (Math.abs(delta) > 1) window.scrollBy({ top: delta, behavior: "smooth" });
+  }
+
+  frame.style.height = focusH + "px";
+  const s = Math.max(t.s, fw / cw, fh / ch);
+  let tx = fw / 2 - (t.x / W) * cw * s;
+  let ty = fh / 2 - (t.y / H) * ch * s;
+  tx = Math.min(0, Math.max(fw - cw * s, tx));   // sin enseñar nunca fuera de la habitación
+  ty = Math.min(0, Math.max(fh - ch * s, ty));
+  stage.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+  return camWait();
+}
+
+// la ventana vuelve a su tamaño y posición de siempre
+function cameraOut() {
+  if (REDUCED || !camFocused) return Promise.resolve();
+  frame.style.height = camNormalH + "px";
+  stage.style.transform = "translate(0px, 0px) scale(1)";
+  return camWait().then(() => {
+    frame.style.height = "";
+    slot.classList.remove("focus");
+    slot.style.height = "";
+    camFocused = false;
+  });
 }
